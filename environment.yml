@@ -1,0 +1,30 @@
+name: viant_demo
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  
+  # Visualization & App
+  - streamlit>=1.30
+  - plotly
+  - matplotlib
+  - seaborn
+  
+  # Time Series & Forecasting
+  - statsmodels
+  - prophet
+  
+  # Bayesian
+  - arviz
+  - pymc
+  
+  # Utilities
+  - pip
+  - protobuf>=4.25  # Force newer protobuf compatible with both streamlit and tensorboard
+  
