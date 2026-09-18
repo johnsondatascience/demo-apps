@@ -1,0 +1,1522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Range Finder</title>
+<meta name="description" content="Interactive probabilistic estimator for Johnson Data Science: enter one number, get a modeled range instead of a point guess.">
+<style>
+  /* Page chrome only — the widget below carries all of its own styling.
+     Everything between the COPY markers is portable to a Squarespace code block. */
+  html, body { margin: 0; }
+  body { background: #f1f4f3; }
+  @media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) { background: #0d1314; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ JDS RANGE FINDER — COPY FROM HERE ============ -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+/* ---------------------------------------------------------------
+   Johnson Data Science · Range Finder
+   All styles scoped to #jds-range-finder so nothing leaks into the
+   host site's theme. Lock the palette with data-jds-theme="light"
+   or "dark" on the section element; omit it to follow the visitor.
+   --------------------------------------------------------------- */
+#jds-range-finder {
+  /* surfaces + ink */
+  --plane:        #f1f4f3;
+  --surface:      #fbfcfb;
+  --surface-sunk: #eef2f1;
+  --ink:          #0f1a1c;
+  --ink-2:        #48575a;
+  --muted:        #74817f;
+  --hairline:     #dde3e2;
+  --grid:         #e3e8e7;
+  --axis:         #c4cccb;
+  /* series — validated pair (light surface #fbfcfb) */
+  --series-1:     #008f9c;  /* the model */
+  --series-2:     #c2562b;  /* your input / variant */
+  --band-outer:   rgba(0, 143, 156, 0.13);
+  --band-inner:   rgba(0, 143, 156, 0.26);
+  --wash-1:       rgba(0, 143, 156, 0.13);
+  --wash-2:       rgba(194, 86, 43, 0.13);
+  --chip-bg:      rgba(0, 143, 156, 0.10);
+  /* status — fixed, never themed */
+  --good:         #0ca30c;
+  --warning:      #fab219;
+  --critical:     #d03b3b;
+
+  --shadow: 0 1px 2px rgba(15, 26, 28, 0.04), 0 8px 24px -12px rgba(15, 26, 28, 0.14);
+
+  --sans:  "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --mono:  "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  box-sizing: border-box;
+  display: block;
+  background: var(--plane);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.55;
+  padding-block: clamp(28px, 5vw, 64px);
+  padding-inline: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+#jds-range-finder *, #jds-range-finder *::before, #jds-range-finder *::after { box-sizing: border-box; }
+#jds-range-finder [hidden] { display: none !important; }
+
+/* dark: OS setting (host page un-stamped), artifact/host theme stamp, explicit widget lock */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #jds-range-finder:not([data-jds-theme="light"]),
+  body:not([data-theme="light"]) #jds-range-finder:not([data-jds-theme="light"]) {
+    --plane:        #0d1314;
+    --surface:      #151d1e;
+    --surface-sunk: #101718;
+    --ink:          #f0f5f4;
+    --ink-2:        #b3c1c0;
+    --muted:        #8a9594;
+    --hairline:     #263130;
+    --grid:         #25302f;
+    --axis:         #36413f;
+    --series-1:     #26a7b4;
+    --series-2:     #d9692f;
+    --band-outer:   rgba(38, 167, 180, 0.16);
+    --band-inner:   rgba(38, 167, 180, 0.30);
+    --wash-1:       rgba(38, 167, 180, 0.16);
+    --wash-2:       rgba(217, 105, 47, 0.16);
+    --chip-bg:      rgba(38, 167, 180, 0.13);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] #jds-range-finder:not([data-jds-theme="light"]),
+#jds-range-finder[data-jds-theme="dark"] {
+  --plane:        #0d1314;
+  --surface:      #151d1e;
+  --surface-sunk: #101718;
+  --ink:          #f0f5f4;
+  --ink-2:        #b3c1c0;
+  --muted:        #8a9594;
+  --hairline:     #263130;
+  --grid:         #25302f;
+  --axis:         #36413f;
+  --series-1:     #26a7b4;
+  --series-2:     #d9692f;
+  --band-outer:   rgba(38, 167, 180, 0.16);
+  --band-inner:   rgba(38, 167, 180, 0.30);
+  --wash-1:       rgba(38, 167, 180, 0.16);
+  --wash-2:       rgba(217, 105, 47, 0.16);
+  --chip-bg:      rgba(38, 167, 180, 0.13);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+}
+
+#jds-range-finder .jds-inner { max-width: 1080px; margin: 0 auto; }
+
+/* ---------- header ---------- */
+#jds-range-finder .jds-eyebrow {
+  margin: 0 0 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#jds-range-finder .jds-h1 {
+  margin: 0 0 14px;
+  max-width: 22ch;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: clamp(28px, 4.4vw, 46px);
+  line-height: 1.06;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  color: var(--ink);
+}
+#jds-range-finder .jds-h1 em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--series-1);
+}
+#jds-range-finder .jds-lede {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 17px;
+  color: var(--ink-2);
+}
+
+/* ---------- mode rail ---------- */
+#jds-range-finder .jds-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 28px 0 0;
+  padding: 3px;
+  background: var(--surface-sunk);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  width: fit-content;
+  max-width: 100%;
+}
+#jds-range-finder .jds-tab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+#jds-range-finder .jds-tab:hover { color: var(--ink); }
+#jds-range-finder .jds-tab[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(15, 26, 28, 0.08);
+}
+
+/* ---------- panel ---------- */
+#jds-range-finder .jds-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 330px) minmax(0, 1fr);
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+#jds-range-finder .jds-controls {
+  padding: 24px;
+  border-right: 1px solid var(--hairline);
+  background: var(--surface-sunk);
+}
+#jds-range-finder .jds-output { padding: 24px; min-width: 0; }
+@media (max-width: 880px) {
+  #jds-range-finder .jds-panel { grid-template-columns: minmax(0, 1fr); }
+  #jds-range-finder .jds-controls { border-right: 0; border-bottom: 1px solid var(--hairline); }
+}
+
+/* ---------- controls ---------- */
+#jds-range-finder .jds-legend {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+#jds-range-finder .jds-field { margin-bottom: 20px; }
+#jds-range-finder .jds-field:last-child { margin-bottom: 0; }
+#jds-range-finder .jds-label {
+  display: block;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 7px;
+}
+#jds-range-finder .jds-money {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--axis);
+  border-radius: 3px;
+  background: var(--surface);
+  overflow: hidden;
+}
+#jds-range-finder .jds-money:focus-within { border-color: var(--series-1); box-shadow: 0 0 0 3px var(--chip-bg); }
+#jds-range-finder .jds-money span {
+  display: grid;
+  place-items: center;
+  padding-inline: 11px;
+  background: var(--surface-sunk);
+  border-right: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--muted);
+}
+#jds-range-finder input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 11px 12px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+#jds-range-finder input[type="text"]:focus { outline: none; }
+#jds-range-finder .jds-slider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+#jds-range-finder .jds-slider-head .jds-label { margin-bottom: 0; }
+#jds-range-finder .jds-val {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--series-1);
+}
+#jds-range-finder input[type="range"] {
+  width: 100%;
+  margin: 6px 0 0;
+  accent-color: var(--series-1);
+  cursor: pointer;
+}
+#jds-range-finder .jds-hint {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+#jds-range-finder .jds-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#jds-range-finder .jds-count {
+  width: 100%;
+  border: 1px solid var(--axis);
+  border-radius: 3px;
+  background: var(--surface);
+  padding: 9px 10px;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+#jds-range-finder .jds-count:focus { outline: none; border-color: var(--series-1); box-shadow: 0 0 0 3px var(--chip-bg); }
+#jds-range-finder .jds-err {
+  margin: 12px 0 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--critical);
+}
+#jds-range-finder .jds-arm {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 9px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+#jds-range-finder .jds-arm.jds-arm-first { padding-top: 0; border-top: 0; }
+#jds-range-finder .jds-arm .jds-key { margin-right: 7px; }
+
+/* ---------- readout ---------- */
+#jds-range-finder .jds-readout { margin-bottom: 22px; }
+#jds-range-finder .jds-readout-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+#jds-range-finder .jds-hero {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: clamp(42px, 7vw, 62px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0;
+}
+#jds-range-finder .jds-hero-note {
+  margin: 10px 0 0;
+  font-size: 16px;
+  color: var(--ink-2);
+  max-width: 48ch;
+}
+#jds-range-finder .jds-hero-note b {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+#jds-range-finder .jds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 7px 13px 7px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface-sunk);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+#jds-range-finder .jds-chip svg { flex: none; display: block; }
+
+/* ---------- chart ---------- */
+#jds-range-finder .jds-chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+#jds-range-finder .jds-chart-title {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+#jds-range-finder .jds-chart-sub {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+#jds-range-finder .jds-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+#jds-range-finder .jds-keys { display: flex; flex-wrap: wrap; gap: 14px; }
+#jds-range-finder .jds-swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+#jds-range-finder .jds-swatch-line { width: 14px; height: 2px; border-radius: 1px; flex: none; }
+#jds-range-finder .jds-plot { position: relative; margin-top: 10px; touch-action: pan-y; }
+#jds-range-finder .jds-plot:focus-visible { outline: 2px solid var(--series-1); outline-offset: 3px; border-radius: 2px; }
+#jds-range-finder .jds-plot svg { display: block; width: 100%; height: auto; }
+#jds-range-finder .jds-tip {
+  position: absolute;
+  z-index: 2;
+  min-width: 132px;
+  padding: 9px 11px;
+  background: var(--surface);
+  border: 1px solid var(--axis);
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  transition: opacity 90ms ease;
+}
+#jds-range-finder .jds-tip[hidden] { display: none !important; }
+#jds-range-finder .jds-tip dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 2px 10px; }
+#jds-range-finder .jds-tip dt { color: var(--muted); }
+#jds-range-finder .jds-tip dd { margin: 0; text-align: right; color: var(--ink); }
+#jds-range-finder .jds-tip strong {
+  display: block;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+/* SVG roles — every mark and label pulls from the tokens above */
+#jds-range-finder .jds-band-outer { fill: var(--band-outer); }
+#jds-range-finder .jds-band-inner { fill: var(--band-inner); }
+#jds-range-finder .jds-line   { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+#jds-range-finder .jds-line-2 { fill: none; stroke: var(--series-2); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+#jds-range-finder .jds-fill-1 { fill: var(--wash-1); }
+#jds-range-finder .jds-fill-2 { fill: var(--wash-2); }
+#jds-range-finder .jds-dot-1  { fill: var(--series-1); stroke: var(--surface); stroke-width: 2; }
+#jds-range-finder .jds-dot-2  { fill: var(--series-2); stroke: var(--surface); stroke-width: 2; }
+#jds-range-finder .jds-sw-1 { fill: var(--series-1); }
+#jds-range-finder .jds-sw-2 { fill: var(--series-2); }
+#jds-range-finder .jds-gridline { stroke: var(--grid); stroke-width: 1; }
+#jds-range-finder .jds-axisline { stroke: var(--axis); stroke-width: 1; }
+#jds-range-finder .jds-crosshair { stroke: var(--axis); stroke-width: 1; }
+#jds-range-finder .jds-tick {
+  fill: var(--muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+#jds-range-finder .jds-annot {
+  fill: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+#jds-range-finder .jds-annot-strong { fill: var(--ink); font-family: var(--sans); font-size: 12px; font-weight: 600; }
+
+/* ---------- table twin ---------- */
+#jds-range-finder .jds-table { margin-top: 18px; border-top: 1px solid var(--hairline); padding-top: 14px; }
+#jds-range-finder .jds-table summary {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+#jds-range-finder .jds-table summary:hover { color: var(--ink); }
+#jds-range-finder .jds-table-scroll { overflow-x: auto; margin-top: 12px; }
+#jds-range-finder table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+#jds-range-finder th, #jds-range-finder td { padding: 6px 10px 6px 0; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--hairline); }
+#jds-range-finder th:first-child, #jds-range-finder td:first-child { text-align: left; }
+#jds-range-finder th { color: var(--muted); font-weight: 400; letter-spacing: 0.04em; }
+#jds-range-finder td { color: var(--ink-2); }
+#jds-range-finder td.jds-em { color: var(--ink); }
+
+/* ---------- method ---------- */
+#jds-range-finder .jds-method {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 40px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+#jds-range-finder .jds-step { background: var(--plane); padding: 20px; }
+#jds-range-finder .jds-step-n {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--series-1);
+  margin: 0 0 8px;
+}
+#jds-range-finder .jds-step h4 {
+  margin: 0 0 6px;
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+#jds-range-finder .jds-step p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+@media (max-width: 720px) {
+  #jds-range-finder .jds-method { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- cta ---------- */
+#jds-range-finder .jds-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  padding: 22px 24px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+}
+#jds-range-finder .jds-cta h3 {
+  margin: 0 0 4px;
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+#jds-range-finder .jds-cta p { margin: 0; font-size: 15px; color: var(--ink-2); max-width: 52ch; }
+#jds-range-finder .jds-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#jds-range-finder .jds-btn {
+  appearance: none;
+  display: inline-block;
+  border: 1px solid var(--series-1);
+  border-radius: 3px;
+  background: var(--series-1);
+  color: #ffffff;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+#jds-range-finder .jds-btn:hover { opacity: 0.88; }
+#jds-range-finder .jds-btn-ghost { background: transparent; color: var(--series-1); }
+#jds-range-finder .jds-btn:focus-visible, #jds-range-finder .jds-tab:focus-visible,
+#jds-range-finder summary:focus-visible, #jds-range-finder input:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+}
+#jds-range-finder .jds-copied { font-family: var(--mono); font-size: 11.5px; color: var(--series-1); }
+#jds-range-finder .jds-fine {
+  margin: 16px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 78ch;
+}
+#jds-range-finder .jds-fine a { color: var(--ink-2); }
+@media (prefers-reduced-motion: reduce) {
+  #jds-range-finder * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<section id="jds-range-finder" aria-labelledby="jds-title">
+  <div class="jds-inner">
+
+    <header class="jds-head">
+      <p class="jds-eyebrow">Johnson Data Science &middot; live model, running in your browser</p>
+      <h1 class="jds-h1" id="jds-title">Most forecasts hand you one number. Yours should hand you a <em>range</em>.</h1>
+      <p class="jds-lede">Put in a number you already know. This page runs an actual model on it &mdash; 5,000 simulated futures, or an exact Bayesian posterior &mdash; and gives you back the spread instead of one confident-sounding guess. Nothing is sent anywhere; the math happens on your machine.</p>
+    </header>
+
+    <div class="jds-rail" role="tablist" aria-label="Choose a model">
+      <button class="jds-tab" id="jds-tab-forecast" role="tab" aria-selected="true" aria-controls="jds-panel-forecast" type="button">Revenue outlook</button>
+      <button class="jds-tab" id="jds-tab-lift" role="tab" aria-selected="false" aria-controls="jds-panel-lift" type="button">A/B lift test</button>
+    </div>
+
+    <!-- ================= MODEL 1 · MONTE CARLO REVENUE OUTLOOK ================= -->
+    <div class="jds-panel" id="jds-panel-forecast" role="tabpanel" aria-labelledby="jds-tab-forecast">
+      <div class="jds-controls">
+        <p class="jds-legend">Your inputs</p>
+
+        <div class="jds-field">
+          <label class="jds-label" for="jds-anchor">Revenue in a typical month</label>
+          <div class="jds-money">
+            <span aria-hidden="true">$</span>
+            <input type="text" id="jds-anchor" inputmode="decimal" autocomplete="off" spellcheck="false" value="250,000" aria-describedby="jds-anchor-hint">
+          </div>
+          <p class="jds-hint" id="jds-anchor-hint">The one number the model is anchored to. Monthly revenue, bookings, units &mdash; whatever you actually track.</p>
+        </div>
+
+        <p class="jds-arm">Assumptions <span style="text-transform:none;letter-spacing:0.01em"> &mdash; drag to match your business</span></p>
+
+        <div class="jds-field">
+          <div class="jds-slider-head">
+            <label class="jds-label" for="jds-growth">Annual growth you expect</label>
+            <output class="jds-val" id="jds-growth-val" for="jds-growth">+12%</output>
+          </div>
+          <input type="range" id="jds-growth" min="-30" max="80" step="1" value="12">
+        </div>
+
+        <div class="jds-field">
+          <div class="jds-slider-head">
+            <label class="jds-label" for="jds-vol">Month-to-month choppiness</label>
+            <output class="jds-val" id="jds-vol-val" for="jds-vol">8%</output>
+          </div>
+          <input type="range" id="jds-vol" min="1" max="30" step="1" value="8">
+          <p class="jds-hint">How far a normal month strays from plan. Steady B2B contracts: 3&ndash;6%. Retail or ad-driven: 12&ndash;20%.</p>
+        </div>
+
+        <div class="jds-field">
+          <div class="jds-slider-head">
+            <label class="jds-label" for="jds-season">Seasonal swing, peak to trough</label>
+            <output class="jds-val" id="jds-season-val" for="jds-season">18%</output>
+          </div>
+          <input type="range" id="jds-season" min="0" max="60" step="1" value="18">
+          <p class="jds-hint">Modeled as a Q4 peak. Set it to 0 if your months are flat.</p>
+        </div>
+      </div>
+
+      <div class="jds-output">
+        <div class="jds-readout">
+          <p class="jds-readout-label">Modeled next 12 months &middot; median outcome</p>
+          <p class="jds-hero" id="jds-hero">&mdash;</p>
+          <p class="jds-hero-note" id="jds-range-note">&mdash;</p>
+          <div class="jds-chip" id="jds-chip" role="status"></div>
+        </div>
+
+        <div class="jds-chart-head">
+          <div>
+            <h3 class="jds-chart-title">Where the next twelve months land</h3>
+            <p class="jds-chart-sub" id="jds-fan-sub">5,000 simulated paths, summarized by quantile</p>
+          </div>
+          <div class="jds-keys" aria-hidden="true">
+            <span class="jds-key"><span class="jds-swatch-line" style="background:var(--series-1)"></span>Median</span>
+            <span class="jds-key"><span class="jds-swatch" style="background:var(--band-inner)"></span>Middle 50%</span>
+            <span class="jds-key"><span class="jds-swatch" style="background:var(--band-outer)"></span>Middle 80%</span>
+          </div>
+        </div>
+        <div class="jds-plot" id="jds-fan" tabindex="0" role="img" aria-label="Fan chart of simulated monthly revenue over the next twelve months. Exact values are in the month-by-month table below.">
+          <div class="jds-tip" id="jds-fan-tip" hidden></div>
+        </div>
+
+        <details class="jds-table">
+          <summary>Month-by-month table</summary>
+          <div class="jds-table-scroll">
+            <table id="jds-fan-table">
+              <caption class="jds-hint" style="text-align:left;caption-side:bottom;padding-top:8px">Quantiles of simulated monthly revenue. P50 is the median path; P10 and P90 bracket the middle 80%.</caption>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ================= MODEL 2 · BAYESIAN LIFT TEST ================= -->
+    <div class="jds-panel" id="jds-panel-lift" role="tabpanel" aria-labelledby="jds-tab-lift" hidden>
+      <div class="jds-controls">
+        <p class="jds-legend">Your test results</p>
+
+        <p class="jds-arm jds-arm-first">Control<span class="jds-key" style="margin-left:8px;text-transform:none;letter-spacing:0"><span class="jds-swatch" style="background:var(--series-1)"></span></span></p>
+        <div class="jds-field jds-grid-2">
+          <div>
+            <label class="jds-label" for="jds-a-n">Visitors</label>
+            <input class="jds-count" type="text" id="jds-a-n" inputmode="numeric" autocomplete="off" value="8,400">
+          </div>
+          <div>
+            <label class="jds-label" for="jds-a-x">Conversions</label>
+            <input class="jds-count" type="text" id="jds-a-x" inputmode="numeric" autocomplete="off" value="210">
+          </div>
+        </div>
+
+        <p class="jds-arm">Variant<span class="jds-key" style="margin-left:8px;text-transform:none;letter-spacing:0"><span class="jds-swatch" style="background:var(--series-2)"></span></span></p>
+        <div class="jds-field jds-grid-2">
+          <div>
+            <label class="jds-label" for="jds-b-n">Visitors</label>
+            <input class="jds-count" type="text" id="jds-b-n" inputmode="numeric" autocomplete="off" value="8,350">
+          </div>
+          <div>
+            <label class="jds-label" for="jds-b-x">Conversions</label>
+            <input class="jds-count" type="text" id="jds-b-x" inputmode="numeric" autocomplete="off" value="252">
+          </div>
+        </div>
+
+        <p class="jds-err" id="jds-lift-err" hidden></p>
+        <p class="jds-hint" style="margin-top:16px">A significance test answers a question nobody asked. This answers the one your team actually has: how likely is it that the variant is better, and what does it cost me if I&rsquo;m wrong?</p>
+      </div>
+
+      <div class="jds-output">
+        <div class="jds-readout">
+          <p class="jds-readout-label">Probability the variant is genuinely better</p>
+          <p class="jds-hero" id="jds-lift-hero">&mdash;</p>
+          <p class="jds-hero-note" id="jds-lift-note">&mdash;</p>
+          <div class="jds-chip" id="jds-lift-chip" role="status"></div>
+        </div>
+
+        <div class="jds-chart-head">
+          <div>
+            <h3 class="jds-chart-title">What each conversion rate could plausibly be</h3>
+            <p class="jds-chart-sub">Exact Beta posteriors, uniform prior &mdash; the overlap is the doubt</p>
+          </div>
+          <div class="jds-keys">
+            <span class="jds-key"><span class="jds-swatch" style="background:var(--series-1)"></span>Control</span>
+            <span class="jds-key"><span class="jds-swatch" style="background:var(--series-2)"></span>Variant</span>
+          </div>
+        </div>
+        <div class="jds-plot" id="jds-post" tabindex="0" role="img" aria-label="Posterior density curves for the control and variant conversion rates. Exact values are in the table below.">
+          <div class="jds-tip" id="jds-post-tip" hidden></div>
+        </div>
+
+        <details class="jds-table">
+          <summary>Posterior summary table</summary>
+          <div class="jds-table-scroll">
+            <table id="jds-lift-table"></table>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ================= METHOD ================= -->
+    <div class="jds-method">
+      <div class="jds-step">
+        <p class="jds-step-n">Step 01</p>
+        <h4>Your number sets the level</h4>
+        <p>The anchor fixes today&rsquo;s level; the dials fix drift, volatility and a seasonal factor. Together they define a generative process &mdash; not a spreadsheet row.</p>
+      </div>
+      <div class="jds-step">
+        <p class="jds-step-n">Step 02</p>
+        <h4>Five thousand futures run</h4>
+        <p>Each path walks forward in log space with correlated shocks (AR-1, &phi;&nbsp;=&nbsp;0.35), so a bad month makes the next one likelier to be bad &mdash; the way real months behave.</p>
+      </div>
+      <div class="jds-step">
+        <p class="jds-step-n">Step 03</p>
+        <h4>The answer is a distribution</h4>
+        <p>Those paths get summarized into quantiles and a probability you can act on. Same discipline on the lift test, where the posterior is exact rather than simulated.</p>
+      </div>
+    </div>
+
+    <!-- ================= CTA ================= -->
+    <div class="jds-cta">
+      <div>
+        <h3>This is the toy version. Yours would use your data.</h3>
+        <p>The real work replaces these three dials with your history, your seasonality and your drivers &mdash; then ships it where your team already looks. Twenty years of forecasting, causal inference and ML, most recently at Pluto TV.</p>
+      </div>
+      <div class="jds-actions">
+        <a class="jds-btn" id="jds-contact" href="/contact">Start a conversation</a>
+        <button class="jds-btn jds-btn-ghost" id="jds-copy" type="button">Copy this scenario</button>
+        <span class="jds-copied" id="jds-copied" hidden>Copied to clipboard</span>
+      </div>
+    </div>
+
+    <p class="jds-fine">A demo, run honestly: the revenue outlook simulates the assumptions you typed, so it is a model of your inputs rather than a forecast of your business &mdash; a real engagement starts from your history. The lift test, by contrast, is exact: Beta&thinsp;(1&thinsp;+&thinsp;conversions, 1&thinsp;+&thinsp;non-conversions) posteriors with a uniform prior, the same method behind the Bayesian testing framework I built at Pluto TV.</p>
+
+  </div>
+</section>
+
+
+<script>
+(function () {
+  "use strict";
+
+  /* =====================================================================
+     Johnson Data Science · Range Finder
+     Two models, both computed client-side:
+       1. Monte Carlo revenue outlook — 5,000 paths, AR(1) shocks in log space
+       2. Bayesian lift test          — exact Beta posteriors + MC on the lift
+     ---------------------------------------------------------------------
+     CONFIG — the only things you normally need to change.
+     ===================================================================== */
+  var CONFIG = {
+    contactUrl: "/contact",   // where "Start a conversation" points
+    paths: 5000,              // simulated futures per run
+    draws: 20000,             // posterior draws for the lift test
+    horizon: 12               // months forecast
+  };
+
+  var root = document.getElementById("jds-range-finder");
+  if (!root) return;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------------------------------------------------------------- math */
+
+  // Deterministic PRNG, so identical inputs always give identical output.
+  function mulberry32(seed) {
+    var t = seed >>> 0;
+    return function () {
+      t = (t + 0x6D2B79F5) >>> 0;
+      var r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function gaussian(rnd) {          // Box-Muller, one draw per call
+    var u = 1 - rnd(), v = rnd();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function hashSeed() {
+    var h = 2166136261;
+    for (var i = 0; i < arguments.length; i++) {
+      var s = String(arguments[i]);
+      for (var j = 0; j < s.length; j++) {
+        h ^= s.charCodeAt(j);
+        h = Math.imul(h, 16777619);
+      }
+    }
+    return h >>> 0;
+  }
+  function quantile(sorted, p) {    // linear interpolation on a sorted array
+    if (!sorted.length) return NaN;
+    var idx = (sorted.length - 1) * p;
+    var lo = Math.floor(idx), hi = Math.ceil(idx);
+    if (lo === hi) return sorted[lo];
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  }
+
+  // Lanczos log-gamma — used by the Beta density and CDF.
+  var LG = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+            -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  function lgamma(x) {
+    var y = x, tmp = x + 5.5, ser = 1.000000000190015;
+    tmp -= (x + 0.5) * Math.log(tmp);
+    for (var j = 0; j < 6; j++) { ser += LG[j] / ++y; }
+    return -tmp + Math.log(2.5066282746310005 * ser / x);
+  }
+  function betaLogPdf(x, a, b) {
+    if (x <= 0 || x >= 1) return -Infinity;
+    return (a - 1) * Math.log(x) + (b - 1) * Math.log1p(-x)
+         + lgamma(a + b) - lgamma(a) - lgamma(b);
+  }
+  function betacf(a, b, x) {        // continued fraction for the incomplete beta
+    var MAXIT = 220, EPS = 3e-14, FPMIN = 1e-300;
+    var qab = a + b, qap = a + 1, qam = a - 1;
+    var c = 1, d = 1 - qab * x / qap;
+    if (Math.abs(d) < FPMIN) d = FPMIN;
+    d = 1 / d;
+    var h = d;
+    for (var m = 1; m <= MAXIT; m++) {
+      var m2 = 2 * m, aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+      d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+      c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+      d = 1 / d; h *= d * c;
+      aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+      d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+      c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+      d = 1 / d;
+      var del = d * c; h *= del;
+      if (Math.abs(del - 1) < EPS) break;
+    }
+    return h;
+  }
+  function betaCdf(x, a, b) {       // P(rate <= x), regularized incomplete beta
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    var bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b)
+                      + a * Math.log(x) + b * Math.log1p(-x));
+    return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a
+                                     : 1 - bt * betacf(b, a, 1 - x) / b;
+  }
+  function gammaSample(a, rnd) {    // Marsaglia-Tsang, a >= 1
+    var d = a - 1 / 3, c = 1 / Math.sqrt(9 * d);
+    for (;;) {
+      var x = gaussian(rnd), v = 1 + c * x;
+      if (v <= 0) continue;
+      v = v * v * v;
+      var u = rnd();
+      if (Math.log(u) < 0.5 * x * x + d - d * v + d * Math.log(v)) return d * v;
+    }
+  }
+  function betaSample(a, b, rnd) {
+    var g1 = gammaSample(a, rnd), g2 = gammaSample(b, rnd);
+    return g1 / (g1 + g2);
+  }
+  // Bisection on the exact CDF — credible bounds without sampling.
+  function quantileBeta(p, a, b) {
+    var lo = 0, hi = 1;
+    for (var i = 0; i < 60; i++) {
+      var mid = (lo + hi) / 2;
+      if (betaCdf(mid, a, b) < p) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  /* ------------------------------------------------------------ formatting */
+
+  function money(v) {
+    var s = v < 0 ? "-$" : "$", a = Math.abs(v);
+    if (a >= 1e9) return s + (a / 1e9).toFixed(2) + "B";
+    if (a >= 1e6) return s + (a / 1e6).toFixed(a / 1e6 >= 100 ? 0 : 2) + "M";
+    if (a >= 1e4) return s + Math.round(a / 1e3) + "K";
+    if (a >= 1e3) return s + (a / 1e3).toFixed(1) + "K";
+    return s + Math.round(a);
+  }
+  function moneyFull(v) {
+    return (v < 0 ? "-$" : "$") + Math.round(Math.abs(v)).toLocaleString("en-US");
+  }
+  function pct(v, dp) { return (v * 100).toFixed(dp == null ? 1 : dp) + "%"; }
+  function signedPct(v, dp) {
+    return (v >= 0 ? "+" : "") + (v * 100).toFixed(dp == null ? 1 : dp) + "%";
+  }
+  function parseNum(str) {
+    var n = parseFloat(String(str).replace(/[^0-9.]/g, ""));
+    return isFinite(n) ? n : NaN;
+  }
+  function commas(n) { return Math.round(n).toLocaleString("en-US"); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+  var ICONS = {
+    good: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="color:var(--good)"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M4.6 8.2l2.2 2.2 4.4-4.6" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    warning: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="color:var(--warning)"><path d="M8 1.6l6.6 12H1.4L8 1.6z" fill="currentColor"/><path d="M8 6v3.4" stroke="#3a2a00" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.7" r="0.95" fill="#3a2a00"/></svg>',
+    critical: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="color:var(--critical)"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg>'
+  };
+  function chip(el, status, label) {
+    el.innerHTML = ICONS[status] + "<span>" + label + "</span>";
+  }
+
+  function niceTicks(min, max, count) {
+    var span = (max - min) || Math.abs(max) || 1;
+    var raw = span / Math.max(1, count);
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var norm = raw / mag;
+    var step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+    var out = [], t = Math.ceil(min / step) * step;
+    for (; t <= max + step * 1e-6; t += step) out.push(t);
+    return out;
+  }
+
+  /* =====================================================================
+     MODEL 1 — Monte Carlo revenue outlook
+       base_t    = base_{t-1} * exp(mu + sigma * e_t)
+       e_t       = phi * e_{t-1} + sqrt(1 - phi^2) * z_t
+       revenue_t = base_t * seasonal(month_t)
+     ===================================================================== */
+  var PHI = 0.35;
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  function seasonalFactor(monthIdx, swing) {
+    // Peak in December, trough in June. `swing` is the peak-to-trough fraction.
+    return 1 + (swing / 2) * Math.cos(2 * Math.PI * (monthIdx - 11) / 12);
+  }
+
+  function simulate(anchor, growthPct, volPct, seasonPct) {
+    var H = CONFIG.horizon, N = CONFIG.paths;
+    var mu = Math.log(1 + growthPct / 100) / 12;
+    var sigma = volPct / 100;
+    var swing = seasonPct / 100;
+    var rnd = mulberry32(hashSeed(anchor, growthPct, volPct, seasonPct, N));
+
+    var startMonth = new Date().getMonth();
+    var monthIdx = [], labels = [];
+    for (var h = 0; h <= H; h++) {
+      var m = (startMonth + h) % 12;
+      monthIdx.push(m);
+      labels.push(h === 0 ? "Now" : MONTHS[m]);
+    }
+    var factors = monthIdx.map(function (m) { return seasonalFactor(m, swing); });
+    var base0 = anchor / factors[0];
+
+    var byMonth = [];
+    for (var i = 0; i < H; i++) byMonth.push(new Float64Array(N));
+    var totals = new Float64Array(N);
+
+    for (var p = 0; p < N; p++) {
+      var base = base0, e = 0, total = 0;
+      for (var t = 1; t <= H; t++) {
+        e = PHI * e + Math.sqrt(1 - PHI * PHI) * gaussian(rnd);
+        base = base * Math.exp(mu + sigma * e);
+        var rev = base * factors[t];
+        byMonth[t - 1][p] = rev;
+        total += rev;
+      }
+      totals[p] = total;
+    }
+
+    var Q = [0.1, 0.25, 0.5, 0.75, 0.9];
+    var asc = function (a, b) { return a - b; };
+    var months = byMonth.map(function (arr, i) {
+      var s = Array.prototype.slice.call(arr).sort(asc);
+      return {
+        label: labels[i + 1],
+        q: Q.map(function (p) { return quantile(s, p); })
+      };
+    });
+    var st = Array.prototype.slice.call(totals).sort(asc);
+    var flat = anchor * H, beat = 0;
+    for (var k = 0; k < st.length; k++) if (st[k] > flat) beat++;
+
+    return {
+      anchor: anchor, months: months,
+      total: { p10: quantile(st, 0.1), p50: quantile(st, 0.5), p90: quantile(st, 0.9) },
+      flat: flat, pBeat: beat / st.length
+    };
+  }
+
+  /* --------------------------------------------------------- the fan chart */
+
+  var fanState = null;
+
+  function renderFan(res) {
+    var host = $("jds-fan");
+    var w = Math.max(280, Math.round(host.clientWidth || 640));
+    var narrow = w < 520;
+    var h = narrow ? 250 : 320;
+    var pad = { t: narrow ? 14 : 22, r: narrow ? 12 : 70, b: 34, l: narrow ? 48 : 60 };
+    var pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+
+    var lo = res.anchor, hi = res.anchor;
+    res.months.forEach(function (m) {
+      lo = Math.min(lo, m.q[0]);
+      hi = Math.max(hi, m.q[4]);
+    });
+    var slack = (hi - lo) * 0.08 || hi * 0.1;
+    lo = Math.max(0, lo - slack);
+    hi = hi + slack;
+
+    var n = res.months.length;
+    var X = function (i) { return pad.l + (pw * i) / n; };
+    var Y = function (v) { return pad.t + ph - ((v - lo) / (hi - lo)) * ph; };
+
+    var here = [res.anchor, res.anchor, res.anchor, res.anchor, res.anchor];
+    var pts = [{ q: here, label: "Now" }].concat(res.months);
+
+    function band(qLow, qHigh) {
+      var d = "M" + X(0).toFixed(1) + "," + Y(pts[0].q[qLow]).toFixed(1);
+      for (var i = 1; i < pts.length; i++) d += "L" + X(i).toFixed(1) + "," + Y(pts[i].q[qLow]).toFixed(1);
+      for (var j = pts.length - 1; j >= 0; j--) d += "L" + X(j).toFixed(1) + "," + Y(pts[j].q[qHigh]).toFixed(1);
+      return d + "Z";
+    }
+    var median = pts.map(function (p, i) { return X(i).toFixed(1) + "," + Y(p.q[2]).toFixed(1); }).join(" ");
+
+    var s = ['<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" role="presentation">'];
+
+    niceTicks(lo, hi, narrow ? 3 : 4).forEach(function (t) {
+      var y = Y(t).toFixed(1);
+      s.push('<line class="jds-gridline" x1="' + pad.l + '" y1="' + y +
+             '" x2="' + (w - pad.r) + '" y2="' + y + '"/>');
+      s.push('<text class="jds-tick" x="' + (pad.l - 8) + '" y="' + (Y(t) + 3.5).toFixed(1) +
+             '" text-anchor="end">' + money(t) + '</text>');
+    });
+
+    s.push('<path class="jds-band-outer" d="' + band(0, 4) + '"/>');
+    s.push('<path class="jds-band-inner" d="' + band(1, 3) + '"/>');
+    s.push('<polyline class="jds-line" points="' + median + '"/>');
+
+    s.push('<line class="jds-axisline" x1="' + pad.l + '" y1="' + (pad.t + ph) +
+           '" x2="' + (w - pad.r) + '" y2="' + (pad.t + ph) + '"/>');
+    pts.forEach(function (p, i) {
+      if (narrow && i % 3 !== 0) return;
+      s.push('<text class="jds-tick" x="' + X(i).toFixed(1) + '" y="' + (pad.t + ph + 17) +
+             '" text-anchor="middle">' + p.label + '</text>');
+    });
+
+    // the number the visitor typed
+    s.push('<circle class="jds-dot-2" cx="' + X(0).toFixed(1) + '" cy="' + Y(res.anchor).toFixed(1) + '" r="4.5"/>');
+    if (!narrow) {
+      s.push('<text class="jds-annot" x="' + (X(0) + 9).toFixed(1) + '" y="' + (Y(res.anchor) - 11).toFixed(1) +
+             '">your number</text>');
+    }
+    // one direct label: the median endpoint
+    var last = pts[pts.length - 1];
+    s.push('<circle class="jds-dot-1" cx="' + X(n).toFixed(1) + '" cy="' + Y(last.q[2]).toFixed(1) + '" r="4.5"/>');
+    if (!narrow) {
+      s.push('<text class="jds-annot-strong" x="' + (X(n) + 10).toFixed(1) + '" y="' + (Y(last.q[2]) - 2).toFixed(1) +
+             '">' + money(last.q[2]) + '</text>');
+      s.push('<text class="jds-annot" x="' + (X(n) + 10).toFixed(1) + '" y="' + (Y(last.q[2]) + 13).toFixed(1) +
+             '">median</text>');
+    }
+
+    s.push('<g class="jds-hover" opacity="0">' +
+             '<line class="jds-crosshair" y1="' + pad.t + '" y2="' + (pad.t + ph) + '"/>' +
+             '<circle class="jds-dot-1" r="4.5"/></g>');
+    s.push('<rect x="' + pad.l + '" y="' + pad.t + '" width="' + pw +
+           '" height="' + ph + '" fill="transparent"/>');
+    s.push("</svg>");
+
+    var tip = $("jds-fan-tip");
+    host.innerHTML = s.join("");
+    host.appendChild(tip);
+
+    fanState = { idx: -1 };
+    var svg = host.querySelector("svg");
+    var hover = host.querySelector(".jds-hover");
+    var hline = hover.querySelector("line");
+    var hdot = hover.querySelector("circle");
+
+    function show(i) {
+      if (i < 0 || i >= pts.length) { hide(); return; }
+      fanState.idx = i;
+      var p = pts[i], x = X(i), y = Y(p.q[2]);
+      hline.setAttribute("x1", x); hline.setAttribute("x2", x);
+      hdot.setAttribute("cx", x); hdot.setAttribute("cy", y);
+      hover.setAttribute("opacity", "1");
+      tip.hidden = false;
+      tip.innerHTML = "<strong>" + esc(p.label) + (i === 0 ? "" : " &middot; month " + i) + "</strong>" +
+        "<dl><dt>P90</dt><dd>" + money(p.q[4]) + "</dd>" +
+        "<dt>P50</dt><dd>" + money(p.q[2]) + "</dd>" +
+        "<dt>P10</dt><dd>" + money(p.q[0]) + "</dd></dl>";
+      var scale = (host.clientWidth / w) || 1;
+      tip.style.left = Math.min(Math.max(x * scale, 76), host.clientWidth - 76) + "px";
+      tip.style.top = Math.max(y * scale - 14, 6) + "px";
+    }
+    function hide() {
+      fanState.idx = -1;
+      hover.setAttribute("opacity", "0");
+      tip.hidden = true;
+    }
+    function fromPointer(ev) {
+      var r = svg.getBoundingClientRect();
+      var x = ((ev.clientX - r.left) / r.width) * w;
+      show(Math.max(0, Math.min(pts.length - 1, Math.round(((x - pad.l) / pw) * n))));
+    }
+    svg.addEventListener("pointermove", fromPointer);
+    svg.addEventListener("pointerdown", fromPointer);
+    svg.addEventListener("pointerleave", hide);
+    host.onblur = hide;
+    host.onkeydown = function (ev) {
+      var i = fanState.idx < 0 ? n : fanState.idx;
+      if (ev.key === "ArrowRight") { show(Math.min(pts.length - 1, i + 1)); ev.preventDefault(); }
+      else if (ev.key === "ArrowLeft") { show(Math.max(0, i - 1)); ev.preventDefault(); }
+      else if (ev.key === "Escape") { hide(); }
+    };
+  }
+
+  function renderFanTable(res) {
+    var rows = ['<caption class="jds-hint" style="text-align:left;caption-side:bottom;padding-top:8px">' +
+      'Quantiles of simulated monthly revenue. P50 is the median path; P10 and P90 bracket the middle 80%.</caption>',
+      "<thead><tr><th>Month</th><th>P10</th><th>P25</th><th>P50</th><th>P75</th><th>P90</th></tr></thead><tbody>"];
+    res.months.forEach(function (m, i) {
+      rows.push("<tr><td>" + (i + 1) + " &middot; " + m.label + "</td>" +
+        "<td>" + moneyFull(m.q[0]) + "</td><td>" + moneyFull(m.q[1]) + "</td>" +
+        '<td class="jds-em">' + moneyFull(m.q[2]) + "</td>" +
+        "<td>" + moneyFull(m.q[3]) + "</td><td>" + moneyFull(m.q[4]) + "</td></tr>");
+    });
+    rows.push("<tr><td>12-month total</td><td>" + moneyFull(res.total.p10) +
+      '</td><td></td><td class="jds-em">' + moneyFull(res.total.p50) +
+      "</td><td></td><td>" + moneyFull(res.total.p90) + "</td></tr></tbody>");
+    $("jds-fan-table").innerHTML = rows.join("");
+  }
+
+  var forecastCache = null;
+
+  function runForecast() {
+    var anchor = parseNum($("jds-anchor").value);
+    var growth = +$("jds-growth").value;
+    var vol = +$("jds-vol").value;
+    var season = +$("jds-season").value;
+
+    $("jds-growth-val").textContent = (growth >= 0 ? "+" : "") + growth + "%";
+    $("jds-vol-val").textContent = vol + "%";
+    $("jds-season-val").textContent = season + "%";
+
+    if (!(anchor > 0)) {
+      $("jds-hero").textContent = "—";
+      $("jds-range-note").textContent = "Put a monthly number above and the model runs on it.";
+      $("jds-chip").innerHTML = "";
+      $("jds-fan").innerHTML = "";
+      $("jds-fan-table").innerHTML = "";
+      forecastCache = null;
+      return;
+    }
+
+    var res = simulate(Math.min(anchor, 1e12), growth, vol, season);
+    forecastCache = res;
+
+    $("jds-hero").textContent = money(res.total.p50);
+    $("jds-range-note").innerHTML = "Eight in ten simulated futures land between <b>" +
+      money(res.total.p10) + "</b> and <b>" + money(res.total.p90) +
+      "</b>. A single-number forecast shows you the middle and hides the other " +
+      money(res.total.p90 - res.total.p10) + " of spread.";
+
+    var p = res.pBeat;
+    chip($("jds-chip"), p >= 0.6 ? "good" : p >= 0.35 ? "warning" : "critical",
+      pct(p, 0) + " chance of beating a flat " + money(res.flat) + " plan");
+    $("jds-fan-sub").textContent = commas(CONFIG.paths) + " simulated paths, summarized by quantile";
+
+    renderFan(res);
+    renderFanTable(res);
+  }
+
+  /* =====================================================================
+     MODEL 2 — Bayesian lift test
+       p ~ Beta(1 + conversions, 1 + non-conversions), uniform prior
+     ===================================================================== */
+
+  function analyzeLift(nA, xA, nB, xB) {
+    var aA = 1 + xA, bA = 1 + nA - xA;
+    var aB = 1 + xB, bB = 1 + nB - xB;
+    var rnd = mulberry32(hashSeed(nA, xA, nB, xB, CONFIG.draws));
+    var N = CONFIG.draws, better = 0, loss = 0;
+    var lifts = new Float64Array(N);
+
+    for (var i = 0; i < N; i++) {
+      var pA = betaSample(aA, bA, rnd);
+      var pB = betaSample(aB, bB, rnd);
+      if (pB > pA) better++;
+      var rel = (pB - pA) / pA;
+      lifts[i] = rel;
+      if (rel < 0) loss -= rel;
+    }
+    var sorted = Array.prototype.slice.call(lifts).sort(function (a, b) { return a - b; });
+    var meanA = aA / (aA + bA), meanB = aB / (aB + bB);
+
+    return {
+      a: { n: nA, x: xA, alpha: aA, beta: bA, mean: meanA, label: "Control",
+           sd: Math.sqrt(meanA * (1 - meanA) / (aA + bA + 1)) },
+      b: { n: nB, x: xB, alpha: aB, beta: bB, mean: meanB, label: "Variant",
+           sd: Math.sqrt(meanB * (1 - meanB) / (aB + bB + 1)) },
+      pBetter: better / N,
+      lift: { p50: quantile(sorted, 0.5), lo: quantile(sorted, 0.025), hi: quantile(sorted, 0.975) },
+      expectedLoss: loss / N
+    };
+  }
+
+  var postState = null;
+
+  function renderPosterior(res) {
+    var host = $("jds-post");
+    var w = Math.max(280, Math.round(host.clientWidth || 640));
+    var narrow = w < 520;
+    var h = narrow ? 240 : 290;
+    var pad = { t: 44, r: 16, b: 46, l: 16 };
+    var pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+
+    var lo = Math.max(0, Math.min(res.a.mean - 5 * res.a.sd, res.b.mean - 5 * res.b.sd));
+    var hi = Math.min(1, Math.max(res.a.mean + 5 * res.a.sd, res.b.mean + 5 * res.b.sd));
+    if (!(hi > lo)) { hi = Math.min(1, lo + 1e-4); }
+
+    var M = 180, xs = [], la = [], lb = [], peak = -Infinity;
+    for (var i = 0; i <= M; i++) {
+      var x = lo + ((hi - lo) * i) / M;
+      xs.push(x);
+      var a = betaLogPdf(x, res.a.alpha, res.a.beta);
+      var b = betaLogPdf(x, res.b.alpha, res.b.beta);
+      la.push(a); lb.push(b);
+      if (a > peak) peak = a;
+      if (b > peak) peak = b;
+    }
+    var ya = la.map(function (l) { return Math.exp(l - peak); });
+    var yb = lb.map(function (l) { return Math.exp(l - peak); });
+
+    var X = function (v) { return pad.l + ((v - lo) / (hi - lo)) * pw; };
+    var Y = function (d) { return pad.t + ph - d * ph; };
+
+    function area(y) {
+      var d = "M" + X(xs[0]).toFixed(1) + "," + (pad.t + ph);
+      for (var i = 0; i < xs.length; i++) d += "L" + X(xs[i]).toFixed(1) + "," + Y(y[i]).toFixed(1);
+      return d + "L" + X(xs[xs.length - 1]).toFixed(1) + "," + (pad.t + ph) + "Z";
+    }
+    function line(y) {
+      return xs.map(function (x, i) { return X(x).toFixed(1) + "," + Y(y[i]).toFixed(1); }).join(" ");
+    }
+
+    var s = ['<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" role="presentation">'];
+    niceTicks(lo, hi, narrow ? 3 : 5).forEach(function (t) {
+      var x = X(t).toFixed(1);
+      s.push('<line class="jds-gridline" x1="' + x + '" y1="' + pad.t +
+             '" x2="' + x + '" y2="' + (pad.t + ph) + '"/>');
+      s.push('<text class="jds-tick" x="' + x + '" y="' + (pad.t + ph + 17) +
+             '" text-anchor="middle">' + pct(t, 2) + '</text>');
+    });
+    s.push('<line class="jds-axisline" x1="' + pad.l + '" y1="' + (pad.t + ph) +
+           '" x2="' + (w - pad.r) + '" y2="' + (pad.t + ph) + '"/>');
+    s.push('<text class="jds-tick" x="' + (pad.l + pw / 2).toFixed(1) + '" y="' + (h - 8) +
+           '" text-anchor="middle">true conversion rate</text>');
+
+    s.push('<path class="jds-fill-1" d="' + area(ya) + '"/>');
+    s.push('<path class="jds-fill-2" d="' + area(yb) + '"/>');
+    s.push('<polyline class="jds-line" points="' + line(ya) + '"/>');
+    s.push('<polyline class="jds-line-2" points="' + line(yb) + '"/>');
+
+    // direct labels: colored mark beside ink-token text, one per series,
+    // stacked when the two peaks sit close enough to collide.
+    function peakLabel(series, swClass, ty) {
+      var x = X(series.mean);
+      var flip = x > pad.l + pw * 0.6;
+      var tx = flip ? x - 14 : x + 14;
+      var swx = flip ? tx + 4 : tx - 12;
+      return '<rect class="' + swClass + '" x="' + swx.toFixed(1) + '" y="' + (ty - 8) +
+             '" width="8" height="8" rx="2"/>' +
+             '<text class="jds-annot-strong" x="' + tx.toFixed(1) + '" y="' + ty +
+             '" text-anchor="' + (flip ? "end" : "start") + '">' +
+             series.label + " " + pct(series.mean, 2) + "</text>";
+    }
+    var collide = Math.abs(X(res.a.mean) - X(res.b.mean)) < 160;
+    s.push(peakLabel(res.a, "jds-sw-1", collide ? pad.t - 26 : pad.t - 12));
+    s.push(peakLabel(res.b, "jds-sw-2", pad.t - 12));
+
+    s.push('<g class="jds-hover" opacity="0">' +
+             '<line class="jds-crosshair" y1="' + pad.t + '" y2="' + (pad.t + ph) + '"/></g>');
+    s.push('<rect x="' + pad.l + '" y="' + pad.t + '" width="' + pw +
+           '" height="' + ph + '" fill="transparent"/>');
+    s.push("</svg>");
+
+    var tip = $("jds-post-tip");
+    host.innerHTML = s.join("");
+    host.appendChild(tip);
+
+    postState = { cursor: null };
+    var svg = host.querySelector("svg");
+    var hover = host.querySelector(".jds-hover");
+    var hline = hover.querySelector("line");
+
+    function show(v) {
+      v = Math.max(lo, Math.min(hi, v));
+      var x = X(v);
+      hline.setAttribute("x1", x); hline.setAttribute("x2", x);
+      hover.setAttribute("opacity", "1");
+      tip.hidden = false;
+      tip.innerHTML = "<strong>true rate above " + pct(v, 2) + "</strong><dl>" +
+        "<dt>Control</dt><dd>" + pct(1 - betaCdf(v, res.a.alpha, res.a.beta), 0) + "</dd>" +
+        "<dt>Variant</dt><dd>" + pct(1 - betaCdf(v, res.b.alpha, res.b.beta), 0) + "</dd></dl>";
+      var scale = (host.clientWidth / w) || 1;
+      tip.style.left = Math.min(Math.max(x * scale, 84), host.clientWidth - 84) + "px";
+      tip.style.top = (pad.t * scale + 30) + "px";
+      postState.cursor = v;
+    }
+    function hide() { hover.setAttribute("opacity", "0"); tip.hidden = true; }
+    function fromPointer(ev) {
+      var r = svg.getBoundingClientRect();
+      var px = ((ev.clientX - r.left) / r.width) * w;
+      show(lo + ((px - pad.l) / pw) * (hi - lo));
+    }
+    svg.addEventListener("pointermove", fromPointer);
+    svg.addEventListener("pointerdown", fromPointer);
+    svg.addEventListener("pointerleave", hide);
+    host.onblur = hide;
+    host.onkeydown = function (ev) {
+      var step = (hi - lo) / 40;
+      var cur = postState.cursor == null ? (lo + hi) / 2 : postState.cursor;
+      if (ev.key === "ArrowRight") { show(cur + step); ev.preventDefault(); }
+      else if (ev.key === "ArrowLeft") { show(cur - step); ev.preventDefault(); }
+      else if (ev.key === "Escape") { hide(); }
+    };
+  }
+
+  function renderLiftTable(res) {
+    var rows = ["<thead><tr><th>Arm</th><th>Visitors</th><th>Conversions</th>" +
+      "<th>Rate</th><th>95% credible interval</th></tr></thead><tbody>"];
+    [res.a, res.b].forEach(function (arm) {
+      rows.push("<tr><td>" + arm.label + "</td><td>" + commas(arm.n) + "</td><td>" +
+        commas(arm.x) + '</td><td class="jds-em">' + pct(arm.mean, 2) + "</td><td>" +
+        pct(quantileBeta(0.025, arm.alpha, arm.beta), 2) + " – " +
+        pct(quantileBeta(0.975, arm.alpha, arm.beta), 2) + "</td></tr>");
+    });
+    rows.push("<tr><td>Relative lift</td><td></td><td></td>" +
+      '<td class="jds-em">' + signedPct(res.lift.p50) + "</td><td>" +
+      signedPct(res.lift.lo) + " – " + signedPct(res.lift.hi) + "</td></tr></tbody>");
+    $("jds-lift-table").innerHTML = rows.join("");
+  }
+
+  var liftCache = null;
+
+  function runLift() {
+    var nA = parseNum($("jds-a-n").value), xA = parseNum($("jds-a-x").value);
+    var nB = parseNum($("jds-b-n").value), xB = parseNum($("jds-b-x").value);
+    var err = $("jds-lift-err");
+
+    var problem = null;
+    if (!(nA > 0) || !(nB > 0)) problem = "Both arms need a visitor count above zero.";
+    else if (!(xA >= 0) || !(xB >= 0)) problem = "Conversions can’t be negative.";
+    else if (xA > nA || xB > nB) problem = "Conversions can’t exceed visitors — check the arm with more conversions than traffic.";
+
+    if (problem) {
+      err.hidden = false;
+      err.textContent = problem;
+      return;
+    }
+    err.hidden = true;
+
+    var res = analyzeLift(Math.round(nA), Math.round(xA), Math.round(nB), Math.round(xB));
+    liftCache = res;
+
+    $("jds-lift-hero").textContent = pct(res.pBetter, 1);
+    $("jds-lift-note").innerHTML = "The most likely lift is <b>" + signedPct(res.lift.p50) +
+      "</b>, and there is a 95% chance the truth sits between <b>" + signedPct(res.lift.lo) +
+      "</b> and <b>" + signedPct(res.lift.hi) + "</b>. Ship the variant and the expected downside, in the worlds where it is actually worse, is <b>" +
+      pct(res.expectedLoss, 2) + "</b> of your current rate.";
+
+    var p = res.pBetter;
+    if (p >= 0.95) chip($("jds-lift-chip"), "good", "Strong enough to ship");
+    else if (p >= 0.8) chip($("jds-lift-chip"), "warning", "Leaning variant — more traffic would settle it");
+    else if (p > 0.2) chip($("jds-lift-chip"), "warning", "Too close to call — keep the test running");
+    else chip($("jds-lift-chip"), "critical", "The variant is probably worse");
+
+    renderPosterior(res);
+    renderLiftTable(res);
+  }
+
+  /* ----------------------------------------------------------------- wiring */
+
+  var activeTab = "forecast";
+
+  function selectTab(name) {
+    activeTab = name;
+    [["forecast", "jds-tab-forecast", "jds-panel-forecast"],
+     ["lift", "jds-tab-lift", "jds-panel-lift"]].forEach(function (t) {
+      var on = t[0] === name;
+      $(t[1]).setAttribute("aria-selected", on ? "true" : "false");
+      $(t[2]).hidden = !on;
+    });
+    if (name === "forecast") runForecast(); else runLift();
+  }
+  $("jds-tab-forecast").addEventListener("click", function () { selectTab("forecast"); });
+  $("jds-tab-lift").addEventListener("click", function () { selectTab("lift"); });
+
+  ["jds-anchor", "jds-growth", "jds-vol", "jds-season"].forEach(function (id) {
+    $(id).addEventListener("input", runForecast);
+  });
+  $("jds-anchor").addEventListener("blur", function () {
+    var v = parseNum(this.value);
+    if (v > 0) this.value = commas(Math.min(v, 1e12));
+  });
+  ["jds-a-n", "jds-a-x", "jds-b-n", "jds-b-x"].forEach(function (id) {
+    var el = $(id);
+    el.addEventListener("input", runLift);
+    el.addEventListener("blur", function () {
+      var v = parseNum(this.value);
+      if (v >= 0) this.value = commas(v);
+    });
+  });
+
+  if (CONFIG.contactUrl) $("jds-contact").setAttribute("href", CONFIG.contactUrl);
+  else $("jds-contact").hidden = true;
+
+  function fallbackCopy(text, done) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "readonly");
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    root.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { /* clipboard unavailable */ }
+    root.removeChild(ta);
+  }
+  $("jds-copy").addEventListener("click", function () {
+    var lines;
+    if (activeTab === "forecast" && forecastCache) {
+      var r = forecastCache;
+      lines = [
+        "Johnson Data Science — Range Finder / revenue outlook",
+        "Anchor month: " + moneyFull(r.anchor),
+        "Assumptions: " + $("jds-growth-val").textContent + " annual growth, " +
+          $("jds-vol-val").textContent + " monthly volatility, " +
+          $("jds-season-val").textContent + " seasonal swing",
+        "Next 12 months (P50): " + moneyFull(r.total.p50),
+        "80% interval: " + moneyFull(r.total.p10) + " to " + moneyFull(r.total.p90),
+        "P(beating a flat " + moneyFull(r.flat) + " plan): " + pct(r.pBeat, 0),
+        "Method: " + commas(CONFIG.paths) + " Monte Carlo paths, AR(1) shocks (phi = 0.35) in log space"
+      ];
+    } else if (liftCache) {
+      var l = liftCache;
+      lines = [
+        "Johnson Data Science — Range Finder / A-B lift test",
+        "Control: " + commas(l.a.x) + " / " + commas(l.a.n) + " = " + pct(l.a.mean, 2),
+        "Variant: " + commas(l.b.x) + " / " + commas(l.b.n) + " = " + pct(l.b.mean, 2),
+        "P(variant better): " + pct(l.pBetter, 1),
+        "Relative lift: " + signedPct(l.lift.p50) + " (95% credible " + signedPct(l.lift.lo) +
+          " to " + signedPct(l.lift.hi) + ")",
+        "Expected loss if wrong: " + pct(l.expectedLoss, 2),
+        "Method: Beta(1+x, 1+n-x) posteriors, uniform prior, " + commas(CONFIG.draws) + " draws"
+      ];
+    } else {
+      return;
+    }
+    var text = lines.join("\n");
+    var done = function () {
+      var flag = $("jds-copied");
+      flag.hidden = false;
+      setTimeout(function () { flag.hidden = true; }, 2400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
+  });
+
+  // Re-render at the new width when the container resizes.
+  var resizeTimer = null;
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (activeTab === "forecast" && forecastCache) renderFan(forecastCache);
+      else if (activeTab === "lift" && liftCache) renderPosterior(liftCache);
+    }, 140);
+  }
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(onResize);
+    ro.observe($("jds-fan"));
+    ro.observe($("jds-post"));
+  } else {
+    window.addEventListener("resize", onResize);
+  }
+
+  runForecast();
+})();
+</script>
+<!-- ============ COPY TO HERE ============ -->
+
+<script>
+// Standalone-page only: when this page is embedded in an iframe it reports its
+// own height to the parent, so the host page can size the frame to the content.
+// See README.md for the five-line listener that goes on the Squarespace side.
+(function () {
+  if (window.parent === window) return;
+  var post = function () {
+    window.parent.postMessage(
+      { jdsRangeFinderHeight: document.documentElement.scrollHeight }, "*");
+  };
+  window.addEventListener("load", post);
+  if (window.ResizeObserver) new ResizeObserver(post).observe(document.body);
+  setTimeout(post, 500);
+})();
+</script>
+
+</body>
+</html>
